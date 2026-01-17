@@ -1,6 +1,9 @@
 import os
+import argparse
+
 from dotenv import load_dotenv
 from google import genai
+from google.genai import types
 
 
 def main():
@@ -11,18 +14,29 @@ def main():
     
     client = genai.Client(api_key=api_key)
     
-    prompt = "Why is Boot.dev such a great place to learn backend development? Use one paragraph maximum."
+    parser = argparse.ArgumentParser(description="Chatbot")
+    parser.add_argument("user_prompt", type=str, help="User prompt")
+    parser.add_argument("--verbose", action="store_true", help="Enable verbose output")
+    args = parser.parse_args()    
+    prompt = args.user_prompt
+    isVerbose = args.verbose
+
+    
+    messages = [types.Content(role="user", parts=[types.Part(text=prompt)])]
     
     response = client.models.generate_content(
         model="gemini-2.5-flash",
-        contents=prompt
+        contents=messages
     )
     
     if not response.usage_metadata:
         raise RuntimeError("Failed API request!")
-    print(f"User prompt: {prompt}")    
-    print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
-    print(f"Response tokens: {response.usage_metadata.candidates_token_count}")
+    
+    if isVerbose:
+        print(f"User prompt: {prompt}")    
+        print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
+        print(f"Response tokens: {response.usage_metadata.candidates_token_count}")
+        
     print(f"Response:\n{response.text}")
 
 
