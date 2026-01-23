@@ -4,6 +4,7 @@ import argparse
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
+from prompt import system_prompt
 
 def main():
     parser = argparse.ArgumentParser(description="AI Code Assistant")
@@ -32,7 +33,8 @@ def main():
 def generate_content(client, messages, isVerbose):
     response = client.models.generate_content(
         model="gemini-2.5-flash",
-        contents=messages
+        contents=messages,
+        config=types.GenerateContentConfig(system_instruction=system_prompt)
     )
     
     if not response.usage_metadata:

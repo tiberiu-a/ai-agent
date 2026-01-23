@@ -2,9 +2,9 @@ import os
 
 def get_files_info(working_directory, directory="."):
     try:
-        abs_path_work_dir = os.path.abspath(working_directory)
-        target_dir = os.path.normpath(os.path.join(abs_path_work_dir, directory))
-        valid_target_dir = os.path.commonpath([abs_path_work_dir, target_dir]) == abs_path_work_dir
+        abs_working_dir = os.path.abspath(working_directory)
+        target_dir = os.path.normpath(os.path.join(abs_working_dir, directory))
+        valid_target_dir = os.path.commonpath([abs_working_dir, target_dir]) == abs_working_dir
         
         if not valid_target_dir:
             return f'Error: Cannot list "{directory}" as it is outside the permitted working directory'
@@ -18,9 +18,9 @@ def get_files_info(working_directory, directory="."):
         
         content_dir = []
         
-        for file in list_dir:
-            file_name = f"- {file}:"
-            path = os.path.join(target_dir, file)            
+        for content in list_dir:
+            file_name = f"- {content}:"
+            path = os.path.join(target_dir, content)            
             file_size = f"file_size={os.path.getsize(path)} bytes"
             is_dir = f"is_dir={os.path.isdir(path)}"
             content_dir.append(f"{file_name} {file_size} {is_dir}")
