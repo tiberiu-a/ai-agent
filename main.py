@@ -1,5 +1,6 @@
 import os
 import argparse
+from config import MAX_ITERATIONS
 
 from dotenv import load_dotenv
 from google import genai
@@ -28,49 +29,65 @@ def main():
 
     messages = [types.Content(role="user", parts=[types.Part(text=prompt)])]
 
+    
     generate_content(client, messages, isVerbose)
 
 
 def generate_content(client, messages, isVerbose):
-    response = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=messages,
-        config=types.GenerateContentConfig(
-            tools=[available_functions], system_instruction=system_prompt
-        ),
-    )
+    for _ in range(MAX_ITERATIONS):
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=messages,
+            config=types.GenerateContentConfig(
+                tools=[available_functions], system_instruction=system_prompt
+            ),
+        )
 
-    if not response.usage_metadata:
-        raise RuntimeError("Gemini API response appears to be malformed")
+        if not response.usage_metadata:
+            raise RuntimeError("Gemini API response appears to be malformed")
 
-    if isVerbose:
-        print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
-        print(f"Response tokens: {response.usage_metadata.candidates_token_count}")
+        if isVerbose:
+            print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
+            print(f"Response tokens: {response.usage_metadata.candidates_token_count}")
 
-    print(f"Response:\n{response.text}")
+        # print(f"Response:\n{response.text}")
+        
+        if response.candidates:
+            for candidate in response.candidates:
+                if candidate is None or candidate.content is None:
+                    continue
+                messages.append(candidate.content)
 
-    if response.function_calls:
-        for function_call in response.function_calls:
-            print(f"Calling function: {function_call.name}({function_call.args})")
-            function_result = []
-            function_call_result = call_function(function_call, isVerbose)
+        if response.function_calls:
+            function_results = []
+            for function_call in response.function_calls:
+                # print(f"Calling function: {function_call.name}({function_call.args})")
+                function_call_result = call_function(function_call, isVerbose)
+                
+                if not function_call_result.parts:
+                    raise Exception("Error: Function call result parts is empty.")
 
-            if not function_call_result.parts:
-                raise Exception("Error: Function call result parts is empty.")
+                part = function_call_result.parts[0]
+                
+                if part.function_response is None:
+                    raise Exception("Error: function_response is empty.")
 
-            if function_call_result.parts[0].function_response is None:
-                raise Exception("Error: function_response is empty.")
+                if part.function_response.response is None:
+                    raise Exception(
+                        "Error: The property response from function_response is empty."
+                    )
 
-            if function_call_result.parts[0].function_response.response is None:
-                raise Exception(
-                    "Error: The property response from function_response is empty."
-                )
+                function_results.append(part)                
 
-            part = function_call_result.parts[0]
-            function_result.append(part)
-            
-            if isVerbose:
-                print(f"-> {function_call_result.parts[0].function_response.response}")
+                if isVerbose:
+                    print(f"-> {function_call_result.parts[0].function_response.response}")
+            messages.append(types.Content(role="user", parts=function_results))
+        else:
+            print("Final response:\n", response.text)
+            return
+    
+    print("The maximul number of interations has been reached and the AI couldn't get the respons!")
+    exit(1)
 
 
 if __name__ == "__main__":
